@@ -1,0 +1,206 @@
+﻿@page "/"
+@inject IJSRuntime JSRuntime
+
+<h3>Select a JSON file to convert to Markdown</h3>
+<div class="file-input">
+    <InputFile OnChange="@HandleFileChange" accept="application/json" multiple="false" />
+</div>
+
+@if (errorMessage != null)
+{
+    <div>
+        <p>Error: @errorMessage</p>
+    </div>
+}
+else if (markdownOutput != null)
+{
+    <div class="file-output">
+        <button @onclick="SaveFile">Save Markdown</button>
+    </div>
+}
+else if (filename != null)
+{
+        <div>
+            <p>Markdown saved!</p>
+        </div>
+}
+else if (isLoading)
+{
+    <div>
+        <p>Loading...</p>
+    </div>
+} else if (jsonData != null)
+{
+    <div>
+        <button @onclick="ConvertData">Convert to Markdown</button>
+    </div>
+}
+
+@code {
+
+    private string? errorMessage;
+    private string markdownOutput;
+    private string filename;
+    private long maxFileSize = 1024 * 150; // 150 KB
+    private string jsonData;
+    private bool isLoading;
+    
+    private async Task HandleFileChange(InputFileChangeEventArgs e)
+    {
+        isLoading = true;
+        var file = e.File;
+        if (file != null && file.ContentType == "application/json")
+        {
+            try
+            {
+                var buffer = new byte[file.Size];
+                await file.OpenReadStream(maxFileSize).ReadAsync(buffer);
+                jsonData = Encoding.UTF8.GetString(buffer);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+        }
+
+        isLoading = false;
+    }
+
+    private void ConvertData()
+    {
+        // Error handling if the JSON data is not in the expected format.
+        try
+        {
+            var steamData = JsonConvert.DeserializeObject<SteamData>(jsonData);
+            markdownOutput = ConvertToMarkdown(steamData);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    static string ConvertToMarkdown(SteamData steamData)
+    {
+        StringBuilder markdown = new StringBuilder();
+        markdown.AppendLine("# Steam Wishlist");
+        markdown.AppendLine();
+
+        // Add general information section
+        markdown.AppendLine("## General Info");
+        markdown.AppendLine();
+        markdown.AppendLine($"- Number of games: {GetNumberOfGames(steamData)}");
+        markdown.AppendLine($"- Average price: {GetAveragePrice(steamData):F2} €"); // F2 formats to 2 decimal places
+        markdown.AppendLine($"- Total price: {GetTotalPrice(steamData):F2} €"); // F2 formats to 2 decimal places
+        markdown.AppendLine();
+        
+        // Add game list section
+        markdown.AppendLine("## Game List");
+        markdown.AppendLine();
+        foreach (var entry in steamData.Data)
+        {
+            if (entry.Type != "Game" || string.IsNullOrEmpty(entry.Price) || entry.Price == "N/A")
+                continue;
+
+            string price = FormatPrice(entry.Price);
+            markdown.AppendLine($"### {entry.Title}");
+            markdown.AppendLine();
+            markdown.AppendLine($"- Price: {price} €");
+            markdown.AppendLine($"- GameID: {GetGameID(entry.GameId)}");
+            markdown.AppendLine($"- URL: {entry.Url}");
+            markdown.AppendLine();
+        }
+
+        return markdown.ToString();
+    }
+
+    static int GetNumberOfGames(SteamData steamData)
+    {
+        int count = 0;
+        foreach (var entry in steamData.Data)
+        {
+            if (entry.Type == "Game" && !string.IsNullOrEmpty(entry.Price) && entry.Price != "N/A")
+                count++;
+        }
+        return count;
+    }
+
+    static double GetAveragePrice(SteamData steamData)
+    {
+        double total = 0;
+        int count = 0;
+        foreach (var entry in steamData.Data)
+        {
+            if (entry.Type == "Game" && !string.IsNullOrEmpty(entry.Price) && entry.Price != "N/A")
+            {
+                total += Convert.ToDouble(entry.Price);
+                count++;
+            }
+        }
+        return count > 0 ? total / count / 100 : 0; // Convert total from cents to euros and calculate average
+    }
+
+    static double GetTotalPrice(SteamData steamData)
+    {
+        double total = 0;
+        foreach (var entry in steamData.Data)
+        {
+            if (entry.Type == "Game" && !string.IsNullOrEmpty(entry.Price) && entry.Price != "N/A")
+            {
+                total += Convert.ToDouble(entry.Price);
+            }
+        }
+        return total / 100; // Convert total from cents to euros
+    }
+
+    static string GetGameID(List<string> gameID)
+    {
+        if (gameID == null || gameID.Count < 2)
+            return "N/A";
+
+        return gameID[1].Replace("app/", "");
+    }
+    
+    static string FormatPrice(string price)
+    {
+        if (string.IsNullOrEmpty(price))
+            return "N/A";
+
+        double priceValue = Convert.ToDouble(price);
+        string formattedPrice = $"{priceValue / 100:F2}"; // Convert cents to Euros with 2 decimal places
+        return formattedPrice;
+    }
+
+    private void SaveFile()
+    {
+        SaveFileDialog saveFileDialog = new SaveFileDialog();
+        saveFileDialog.DefaultExt = "md";
+        saveFileDialog.Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*";
+        saveFileDialog.FilterIndex = 1;
+        saveFileDialog.RestoreDirectory = true;
+        saveFileDialog.Title = "Save Markdown File";
+        if (saveFileDialog.ShowDialog() == DialogResult.OK)
+        {
+            string filename = saveFileDialog.FileName;
+            File.WriteAllTextAsync(filename, markdownOutput);
+        }
+    }
+
+    class SteamData
+    {
+        public string Version { get; set; }
+        public List<SteamEntry> Data { get; set; }
+    }
+
+    class SteamEntry
+    {
+        public List<string> GameId { get; set; }
+        public string Title { get; set; }
+        public string Url { get; set; }
+        public string Type { get; set; }
+        public string? ReleaseDate { get; set; }
+        public string? Note { get; set; }
+        public string? Price { get; set; }
+        public int? Discount { get; set; }
+    }
+}

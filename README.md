@@ -27,9 +27,10 @@ Have you ever wanted to share your Steam wishlist with someone who doesn't have 
 ### Installing from release/prebuilt binaries
 
 1. Download the latest release from the [Releases](https://github.com/KylerianHD/Steam-Wishlist-To-Markdown-Converter/releases/latest) page.
-2. Go to the [Steam website](https://store.steampowered.com/wishlist) and download the JSON file of your Steam wishlist using [Augmented Steam](https://github.com/IsThereAnyDeal/AugmentedSteam).
-3. Start the application.
-4. Now you are ready to convert your Steam wishlist data to Markdown.
+2. Extract the files wherever you want. (**ATTENTION**: All files within the archive must be in the same directory, due to the nature of Blazor Hybrid applications.)
+4. Go to the [Steam website](https://store.steampowered.com/wishlist) and download the JSON file of your Steam wishlist using [Augmented Steam](https://github.com/IsThereAnyDeal/AugmentedSteam).
+5. Start the application (`SteamWishlistToMarkdownConverter.exe`).
+6. Now you are ready to convert your Steam wishlist data to Markdown.
 
 ## Future Goals
 

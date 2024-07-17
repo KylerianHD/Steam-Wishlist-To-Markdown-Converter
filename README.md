@@ -37,12 +37,11 @@ Have you ever wanted to share your Steam wishlist with someone who doesn't have 
 - [X] Beautify the user interface.
 - [ ] Make price formatting work with all countries and their currencies.
 - [ ] Being able to get the JSON file of the Steam wishlist without the user having to use Augmented Steam.
-- [ ] Enable user to directly convert the markdown to a PDF file.
+- [ ] Enable the user to directly convert the markdown to a PDF file.
 
 ## Known Issues
 
 - The application currently only works with the currency Euro (€).
-- The user interface is not very pretty.
 
 If you encounter any bugs or issues, please report them on the [Issues](https://github.com/KylerianHD/Steam-Wishlist-To-Markdown-Converter/issues) page.
 

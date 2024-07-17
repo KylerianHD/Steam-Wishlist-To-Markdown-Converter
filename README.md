@@ -33,9 +33,10 @@ Have you ever wanted to share your Steam wishlist with someone who doesn't have 
 
 ## Future Goals
 
-- [ ] Beautify the user interface.
+- [X] Beautify the user interface.
 - [ ] Make price formatting work with all countries and their currencies.
 - [ ] Being able to get the JSON file of the Steam wishlist without the user having to use Augmented Steam.
+- [ ] Enable user to directly convert the markdown to a PDF file.
 
 ## Known Issues
 

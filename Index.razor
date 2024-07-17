@@ -1,40 +1,41 @@
 ﻿@page "/"
 @inject IJSRuntime JSRuntime
 
-<h3>Select a JSON file to convert to Markdown</h3>
-<div class="file-input">
-    <InputFile OnChange="@HandleFileChange" accept="application/json" multiple="false" />
-</div>
+<div class="container">
+    <h1>Steam Wishlist JSON to Markdown Converter</h1>
 
-@if (errorMessage != null)
-{
-    <div>
-        <p>Error: @errorMessage</p>
+    <div class="file-drop-zone"
+         ondragover="event.preventDefault();"
+         ondragenter="event.target.classList.add('highlight')"
+         ondragleave="event.target.classList.remove('highlight')"
+         ondrop="event.preventDefault(); event.target.classList.remove('highlight'); document.getElementById('fileInput').files = event.dataTransfer.files; document.getElementById('fileInput').dispatchEvent(new Event('change'));">
+        <p>Drag and drop a JSON file here, or click to select a file</p>
+        <InputFile OnChange="@HandleFileChange" accept="application/json" id="fileInput" />
     </div>
-}
-else if (markdownOutput != null)
-{
-    <div class="file-output">
-        <button @onclick="SaveFile">Save Markdown</button>
-    </div>
-}
-else if (filename != null)
-{
-        <div>
-            <p>Markdown saved!</p>
+
+    @if (errorMessage != null)
+    {
+        <p class="error-message">Error: @errorMessage</p>
+    }
+
+    @if (isLoading)
+    {
+        <div class="loading-spinner"></div>
+    }
+    else if (jsonData != null && markdownOutput == null)
+    {
+        <button class="button" @onclick="ConvertData">Convert to Markdown</button>
+    }
+
+    @if (markdownOutput != null)
+    {
+        <div class="checkbox-container">
+            <input type="checkbox" id="convertToPdf" @bind="convertToPdf" />
+            <label for="convertToPdf">Convert to PDF</label>
         </div>
-}
-else if (isLoading)
-{
-    <div>
-        <p>Loading...</p>
-    </div>
-} else if (jsonData != null)
-{
-    <div>
-        <button @onclick="ConvertData">Convert to Markdown</button>
-    </div>
-}
+        <button class="button" @onclick="SaveFile">Save @(convertToPdf ? "PDF" : "Markdown")</button>
+    }
+</div>
 
 @code {
 
@@ -44,10 +45,12 @@ else if (isLoading)
     private long maxFileSize = 1024 * 150; // 150 KB
     private string jsonData;
     private bool isLoading;
-    
+    private bool convertToPdf = false;
+
     private async Task HandleFileChange(InputFileChangeEventArgs e)
     {
         isLoading = true;
+        errorMessage = null;
         var file = e.File;
         if (file != null && file.ContentType == "application/json")
         {
@@ -61,14 +64,17 @@ else if (isLoading)
             {
                 errorMessage = ex.Message;
             }
+        } else
+        {
+            errorMessage = "Please select a valid JSON file.";
         }
 
         isLoading = false;
     }
 
-    private void ConvertData()
+    private async Task ConvertData()
     {
-        // Error handling if the JSON data is not in the expected format.
+        isLoading = true;
         try
         {
             var steamData = JsonConvert.DeserializeObject<SteamData>(jsonData);
@@ -78,6 +84,7 @@ else if (isLoading)
         {
             errorMessage = ex.Message;
         }
+        isLoading = false;
     }
 
     static string ConvertToMarkdown(SteamData steamData)
@@ -93,7 +100,7 @@ else if (isLoading)
         markdown.AppendLine($"- Average price: {GetAveragePrice(steamData):F2} €"); // F2 formats to 2 decimal places
         markdown.AppendLine($"- Total price: {GetTotalPrice(steamData):F2} €"); // F2 formats to 2 decimal places
         markdown.AppendLine();
-        
+
         // Add game list section
         markdown.AppendLine("## Game List");
         markdown.AppendLine();
@@ -160,7 +167,7 @@ else if (isLoading)
 
         return gameID[1].Replace("app/", "");
     }
-    
+
     static string FormatPrice(string price)
     {
         if (string.IsNullOrEmpty(price))
@@ -171,19 +178,38 @@ else if (isLoading)
         return formattedPrice;
     }
 
-    private void SaveFile()
+    private async Task SaveFile()
     {
-        SaveFileDialog saveFileDialog = new SaveFileDialog();
-        saveFileDialog.DefaultExt = "md";
-        saveFileDialog.Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*";
-        saveFileDialog.FilterIndex = 1;
-        saveFileDialog.RestoreDirectory = true;
-        saveFileDialog.Title = "Save Markdown File";
-        if (saveFileDialog.ShowDialog() == DialogResult.OK)
+        string defaultExt = convertToPdf ? "pdf" : "md";
+        string filter = convertToPdf ? "PDF files (*.pdf)|*.pdf" : "Markdown files (*.md)|*.md";
+
+        // Call the C# method to show the SaveFileDialog
+        var fileName = await JSRuntime.InvokeAsync<string>("DotNet.invokeMethodAsync", "SteamWishlistJSONToMarkdownBlazor", "ShowSaveFileDialogStatic", defaultExt, filter);
+
+        if (!string.IsNullOrEmpty(fileName))
         {
-            string filename = saveFileDialog.FileName;
-            File.WriteAllTextAsync(filename, markdownOutput);
+            byte[] content;
+            if (convertToPdf)
+            {
+                content = await ConvertToPdf(markdownOutput);
+            }
+            else
+            {
+                content = System.Text.Encoding.UTF8.GetBytes(markdownOutput);
+            }
+
+            await File.WriteAllBytesAsync(fileName, content);
         }
+    }
+
+    private async Task<byte[]> ConvertToPdf(string markdown)
+    {
+        // This is a placeholder. You'll need to implement the actual PDF conversion.
+        // You might want to use a library like iText7 or PDFsharp for this.
+        // For now, we'll just give a pop up message.
+        MessageBox.Show("Feature currently not implemented.");
+        byte[] tempReturnByte = new byte[0];
+        return tempReturnByte;
     }
 
     class SteamData

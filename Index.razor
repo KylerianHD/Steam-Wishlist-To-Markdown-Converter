@@ -72,13 +72,14 @@
         isLoading = false;
     }
 
-    private async Task ConvertData()
+    private void ConvertData()
     {
         isLoading = true;
         try
         {
             var steamData = JsonConvert.DeserializeObject<SteamData>(jsonData);
-            markdownOutput = ConvertToMarkdown(steamData);
+            var userCulture = CultureInfo.CurrentCulture;
+            markdownOutput = ConvertToMarkdown(steamData, userCulture);
         }
         catch (Exception ex)
         {
@@ -87,7 +88,7 @@
         isLoading = false;
     }
 
-    static string ConvertToMarkdown(SteamData steamData)
+    static string ConvertToMarkdown(SteamData steamData, CultureInfo culture)
     {
         StringBuilder markdown = new StringBuilder();
         markdown.AppendLine("# Steam Wishlist");
@@ -97,8 +98,8 @@
         markdown.AppendLine("## General Info");
         markdown.AppendLine();
         markdown.AppendLine($"- Number of games: {GetNumberOfGames(steamData)}");
-        markdown.AppendLine($"- Average price: {GetAveragePrice(steamData):F2} €"); // F2 formats to 2 decimal places
-        markdown.AppendLine($"- Total price: {GetTotalPrice(steamData):F2} €"); // F2 formats to 2 decimal places
+        markdown.AppendLine($"- Average price: {FormatPrice(GetAveragePrice(steamData), culture)}");
+        markdown.AppendLine($"- Total price: {FormatPrice(GetTotalPrice(steamData), culture)}");
         markdown.AppendLine();
 
         // Add game list section
@@ -109,10 +110,10 @@
             if (entry.Type != "Game" || string.IsNullOrEmpty(entry.Price) || entry.Price == "N/A")
                 continue;
 
-            string price = FormatPrice(entry.Price);
+            double price = Convert.ToDouble(entry.Price) / 100;
             markdown.AppendLine($"### {entry.Title}");
             markdown.AppendLine();
-            markdown.AppendLine($"- Price: {price} €");
+            markdown.AppendLine($"- Price: {FormatPrice(price, culture)}");
             markdown.AppendLine($"- GameID: {GetGameID(entry.GameId)}");
             markdown.AppendLine($"- URL: {entry.Url}");
             markdown.AppendLine();
@@ -144,7 +145,7 @@
                 count++;
             }
         }
-        return count > 0 ? total / count / 100 : 0; // Convert total from cents to euros and calculate average
+        return count > 0 ? total / count / 100 : 0;
     }
 
     static double GetTotalPrice(SteamData steamData)
@@ -157,7 +158,7 @@
                 total += Convert.ToDouble(entry.Price);
             }
         }
-        return total / 100; // Convert total from cents to euros
+        return total / 100;
     }
 
     static string GetGameID(List<string> gameID)
@@ -168,20 +169,24 @@
         return gameID[1].Replace("app/", "");
     }
 
-    static string FormatPrice(string price)
+    static string FormatPrice(double price, CultureInfo culture)
     {
-        if (string.IsNullOrEmpty(price))
+        if (string.IsNullOrEmpty(price.ToString()))
             return "N/A";
 
-        double priceValue = Convert.ToDouble(price);
-        string formattedPrice = $"{priceValue / 100:F2}"; // Convert cents to Euros with 2 decimal places
-        return formattedPrice;
+        return price.ToString("C", culture);
     }
 
     private async Task SaveFile()
     {
         string defaultExt = convertToPdf ? "pdf" : "md";
         string filter = convertToPdf ? "PDF files (*.pdf)|*.pdf" : "Markdown files (*.md)|*.md";
+
+        if (convertToPdf)
+        {
+            MessageBox.Show("Feature currently not implemented.");
+            return;
+        }
 
         // Call the C# method to show the SaveFileDialog
         var fileName = await JSRuntime.InvokeAsync<string>("DotNet.invokeMethodAsync", "SteamWishlistJSONToMarkdownBlazor", "ShowSaveFileDialogStatic", defaultExt, filter);
@@ -195,7 +200,7 @@
             }
             else
             {
-                content = System.Text.Encoding.UTF8.GetBytes(markdownOutput);
+                content = Encoding.UTF8.GetBytes(markdownOutput);
             }
 
             await File.WriteAllBytesAsync(fileName, content);
@@ -205,9 +210,8 @@
     private async Task<byte[]> ConvertToPdf(string markdown)
     {
         // This is a placeholder. You'll need to implement the actual PDF conversion.
-        // You might want to use a library like iText7 or PDFsharp for this.
-        // For now, we'll just give a pop up message.
-        MessageBox.Show("Feature currently not implemented.");
+        // Might want to use a library like iText7 or PDFsharp for this.
+        // For now, we'll just retrun nothing.
         byte[] tempReturnByte = new byte[0];
         return tempReturnByte;
     }

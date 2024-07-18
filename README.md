@@ -11,7 +11,7 @@ Have you ever wanted to share your Steam wishlist with someone who doesn't have 
 - Converts Steam wishlist data from JSON to Markdown.
 - Provides general information about the wishlist, such as the number of games, average price, and total price (not counting free or not released games and hardware).
 - Lists each game in the wishlist with details like title, price, GameID, and URL.
-- Formats prices in Euros (€).
+- Formats prices to all countries and their currencies automatically.
 - Generates a well-structured Markdown file ready for sharing or further editing.
 
 ## Usage
